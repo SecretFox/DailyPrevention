@@ -35,7 +35,7 @@ class com.fox.DailyPrevention.DailyPrevention
 	public function StopClaim(dv:DistributedValue){
 		if (dv.GetValue()){
 			if (!_root.dailylogin.m_Window.m_Content.m_Skin["ClaimReward"]){
-				setTimeout(Delegate.create(this, StopClaim), 1000, dv);
+				setTimeout(Delegate.create(this, StopClaim), 200, dv);
 				return
 			}
 			if (!_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"]){
