@@ -21,11 +21,16 @@ class com.fox.DailyPrevention.DailyPrevention
 		LoginRewardsDval.SignalChanged.Connect(StopClaim, this);
 		StopClaim(LoginRewardsDval);
 	}
-	
 	private function ClaimReward(){
-		if (DistributedValueBase.GetDValue("DailyPrevention_Character") == Character.GetClientCharacter().GetName()){
-			_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"]();
-		}else if (Key.isDown(Key.CONTROL)){
+		var characters:Array = DistributedValueBase.GetDValue("DailyPrevention_Character").split(",");
+		var name = Character.GetClientCharacter().GetName();
+		for (var i in characters){
+			if (characters[i] == name){
+				_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"]();
+				return
+			}
+		}
+		if (Key.isDown(Key.CONTROL)){
 			_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"]();
 		}else{
 			Chat.SignalShowFIFOMessage.Emit("You must be holding Ctrl", 0);
