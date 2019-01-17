@@ -22,18 +22,25 @@ class com.fox.DailyPrevention.DailyPrevention
 		StopClaim(LoginRewardsDval);
 	}
 	private function ClaimReward(){
-		var characters:Array = DistributedValueBase.GetDValue("DailyPrevention_Character").split(",");
-		var name = Character.GetClientCharacter().GetName();
-		for (var i in characters){
-			if (characters[i] == name){
-				_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"]();
-				return
+		if (this["m_TrackLength"] == 28 && !com.GameInterface.UtilsBase.GetGameTweak("Seasonal_SWL_Anniversary2018") && !this["m_TrackNum"]){
+			var characters:Array = DistributedValueBase.GetDValue("DailyPrevention_Character").split(",");
+			var name = Character.GetClientCharacter().GetName();
+			for (var i in characters){
+				if (characters[i] == name){
+					this["_ClaimReward"]();
+					return
+				}
+			}
+			
+			if (Key.isDown(Key.CONTROL)){
+				this["_ClaimReward"]();
+			} else {
+				Chat.SignalShowFIFOMessage.Emit("You must be holding Ctrl", 0);
 			}
 		}
-		if (Key.isDown(Key.CONTROL)){
-			_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"]();
-		}else{
-			Chat.SignalShowFIFOMessage.Emit("You must be holding Ctrl", 0);
+		// Event
+		else{
+			this["_ClaimReward"]();
 		}
 	}
 	
