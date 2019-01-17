@@ -6,20 +6,22 @@ import mx.utils.Delegate;
 
 class com.fox.DailyPrevention.DailyPrevention 
 {
+	static var m_mod:DailyPrevention;
 	private var LoginRewardsDval:DistributedValue;
-	public static function main(swfRoot:MovieClip):Void
-	{
-		var s_app = new DailyPrevention(swfRoot);
-		swfRoot.onLoad = function(){s_app.Load()};
-		swfRoot.onUnload = function(){s_app.Unload()};
+	public static function main(swfRoot:MovieClip):Void	{
+		var m_mod = new DailyPrevention(swfRoot);
+		swfRoot.onLoad = function(){m_mod.Load()};
+		swfRoot.onUnload = function(){m_mod.Unload()};
 	}
 
-	public function DailyPrevention() { }
+	public function DailyPrevention(swfRoot:MovieClip) {
+		m_mod = this;
+	}
 
 	public function Load(){
 		LoginRewardsDval = DistributedValue.Create("dailyLogin_window");
-		LoginRewardsDval.SignalChanged.Connect(StopClaim, this);
-		StopClaim(LoginRewardsDval);
+		LoginRewardsDval.SignalChanged.Connect(HookClaim, this);
+		HookClaim(LoginRewardsDval);
 	}
 	private function ClaimReward(){
 		if (this["m_TrackLength"] == 28 && !com.GameInterface.UtilsBase.GetGameTweak("Seasonal_SWL_Anniversary2018") && !this["m_TrackNum"]){
@@ -31,7 +33,6 @@ class com.fox.DailyPrevention.DailyPrevention
 					return
 				}
 			}
-			
 			if (Key.isDown(Key.CONTROL)){
 				this["_ClaimReward"]();
 			} else {
@@ -44,20 +45,32 @@ class com.fox.DailyPrevention.DailyPrevention
 		}
 	}
 	
-	public function StopClaim(dv:DistributedValue){
-		if (dv.GetValue()){
-			if (!_root.dailylogin.m_Window.m_Content.m_Skin["ClaimReward"]){
-				setTimeout(Delegate.create(this, StopClaim), 200, dv);
+	//Hooks button on reward track change (events?)
+	private function SetTrack(trackNum:Number, forceRefresh:Boolean){
+		this["_SetTrack"](trackNum, forceRefresh);
+		m_mod.HookClaim();
+	}
+	
+	private function HookClaim(){
+		if (LoginRewardsDval.GetValue()){
+			var daily:MovieClip = _root.dailylogin.m_Window.m_Content;
+			if (!daily.m_Skin.initialized){
+				setTimeout(Delegate.create(this, HookClaim), 200);
 				return
 			}
-			if (!_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"]){
-				_root.dailylogin.m_Window.m_Content.m_Skin["_ClaimReward"] = _root.dailylogin.m_Window.m_Content.m_Skin["ClaimReward"];
-				_root.dailylogin.m_Window.m_Content.m_Skin["ClaimReward"] = ClaimReward;
+			// Claim reward button hook
+			if (!daily.m_Skin["_ClaimReward"] && daily.m_Skin["ClaimReward"]) {
+				daily.m_Skin["_ClaimReward"] = daily.m_Skin["ClaimReward"];
+				daily.m_Skin["ClaimReward"] = ClaimReward;
+			}
+			// rehook on reward track change (during events?)
+			if (!daily["_SetTrack"]) {
+				daily["_SetTrack"] = daily["SetTrack"];
+				daily["SetTrack"] = SetTrack;
 			}
 		}
 	}
-
 	public function Unload(){
-		LoginRewardsDval.SignalChanged.Disconnect(StopClaim, this);
+		LoginRewardsDval.SignalChanged.Disconnect(HookClaim, this);
 	}
 }
