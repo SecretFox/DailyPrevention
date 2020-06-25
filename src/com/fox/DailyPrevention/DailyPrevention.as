@@ -24,7 +24,7 @@ class com.fox.DailyPrevention.DailyPrevention
 		HookClaim(LoginRewardsDval);
 	}
 	private function ClaimReward(){
-		if (this["m_TrackLength"] == 28 && !com.GameInterface.UtilsBase.GetGameTweak("Seasonal_SWL_Anniversary2018") && !this["m_TrackNum"]){
+		if (this["m_TrackLength"] == 28 && this["m_TrackNum"] == 0){
 			var characters:Array = DistributedValueBase.GetDValue("DailyPrevention_Character").split(",");
 			var name = Character.GetClientCharacter().GetName();
 			for (var i in characters){
@@ -36,10 +36,9 @@ class com.fox.DailyPrevention.DailyPrevention
 			if (Key.isDown(Key.CONTROL)){
 				this["_ClaimReward"]();
 			} else {
-				Chat.SignalShowFIFOMessage.Emit("You must be holding Ctrl", 0);
+				Chat.SignalShowFIFOMessage.Emit("DailyPrevention: Claiming blocked on this character, hold Ctrl to override", 0);
 			}
 		}
-		// Event
 		else{
 			this["_ClaimReward"]();
 		}
