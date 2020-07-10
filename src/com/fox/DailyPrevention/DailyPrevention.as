@@ -1,75 +1,126 @@
 import com.GameInterface.Chat;
+import com.GameInterface.Claim;
 import com.GameInterface.DistributedValue;
 import com.GameInterface.DistributedValueBase;
 import com.GameInterface.Game.Character;
 import mx.utils.Delegate;
 
-class com.fox.DailyPrevention.DailyPrevention 
+class com.fox.DailyPrevention.DailyPrevention
 {
-	static var m_mod:DailyPrevention;
-	private var LoginRewardsDval:DistributedValue;
-	public static function main(swfRoot:MovieClip):Void	{
+	private var m_Daily_Login:DistributedValue;
+	public static function main(swfRoot:MovieClip):Void
+	{
 		var m_mod = new DailyPrevention(swfRoot);
-		swfRoot.onLoad = function(){m_mod.Load()};
-		swfRoot.onUnload = function(){m_mod.Unload()};
+		swfRoot.onLoad = function() {m_mod.Load()};
+		swfRoot.onUnload = function() {m_mod.Unload()};
 	}
 
-	public function DailyPrevention(swfRoot:MovieClip) {
-		m_mod = this;
+	public function DailyPrevention()
+	{
+		m_Daily_Login = DistributedValue.Create("dailyLogin_window");
 	}
 
-	public function Load(){
-		LoginRewardsDval = DistributedValue.Create("dailyLogin_window");
-		LoginRewardsDval.SignalChanged.Connect(HookClaim, this);
-		HookClaim(LoginRewardsDval);
+	public function Load()
+	{
+		m_Daily_Login.SignalChanged.Connect(HookClaim, this);
+		HookClaim(m_Daily_Login);
+		Claim.SignalRewardsUpdated.Connect(AutoClaim, this);
+		AutoClaim();
 	}
-	private function ClaimReward(){
-		if (this["m_TrackLength"] == 28 && this["m_TrackNum"] == 0){
-			var characters:Array = DistributedValueBase.GetDValue("DailyPrevention_Character").split(",");
-			var name = Character.GetClientCharacter().GetName();
-			for (var i in characters){
-				if (characters[i] == name){
-					this["_ClaimReward"]();
-					return
+
+	static function NameMatch()
+	{
+		var characters:Array = DistributedValueBase.GetDValue("DailyPrevention_Character").split(",");
+		var name = Character.GetClientCharacter().GetName();
+		for (var y in characters)
+		{
+			if (characters[y] == name) return true;
+		}
+	}
+
+	static function IsEvent(trackNum)
+	{
+		var trackLength:Number = Claim.GetRewardTrackLength(trackNum);
+		return trackLength != 28 && trackNum != 0;
+	}
+
+	private function AutoClaim()
+	{
+		if (DistributedValueBase.GetDValue("DailyPrevention_AutoClaim"))
+		{
+			// Try to claim rewards
+			var m_NumTracks = Claim.GetNumRewardTracks();
+			for (var i = 0; i < m_NumTracks; i++)
+			{
+				if (Claim.RewardAvailable(i))
+				{
+					if (NameMatch() || IsEvent(i))
+					{
+						Claim.ClaimReward(i);
+					}
 				}
 			}
-			if (Key.isDown(Key.CONTROL)){
-				this["_ClaimReward"]();
-			} else {
-				Chat.SignalShowFIFOMessage.Emit("DailyPrevention: Claiming blocked on this character, hold Ctrl to override", 0);
+			// Force update topbar icon?
+			// It should get updated by one of the Claim Signals?
+			//_root.mainmenuwindow.UpdateDailyRewardStatus()
+			// Check if there are unclaimed rewards
+			var claimAvailable:Boolean = false;
+			for (var i:Number = 0; i < Claim.GetNumRewardTracks(); i++)
+			{
+				if (Claim.RewardAvailable(i))
+				{
+					if (NameMatch() || IsEvent())
+					{
+						claimAvailable = true;
+						break;
+					}
+				}
 			}
-		}
-		else{
-			this["_ClaimReward"]();
-		}
-	}
-	
-	//Hooks button on reward track change (events?)
-	private function SetTrack(trackNum:Number, forceRefresh:Boolean){
-		this["_SetTrack"](trackNum, forceRefresh);
-		m_mod.HookClaim();
-	}
-	
-	private function HookClaim(){
-		if (LoginRewardsDval.GetValue()){
-			var daily:MovieClip = _root.dailylogin.m_Window.m_Content;
-			if (!daily.m_Skin.initialized){
-				setTimeout(Delegate.create(this, HookClaim), 200);
-				return
-			}
-			// Claim reward button hook
-			if (!daily.m_Skin["_ClaimReward"] && daily.m_Skin["ClaimReward"]) {
-				daily.m_Skin["_ClaimReward"] = daily.m_Skin["ClaimReward"];
-				daily.m_Skin["ClaimReward"] = ClaimReward;
-			}
-			// rehook on reward track change (during events?)
-			if (!daily["_SetTrack"]) {
-				daily["_SetTrack"] = daily["SetTrack"];
-				daily["SetTrack"] = SetTrack;
+			// If there are still rewards for some reason keep window open,otherwise close it
+			if (!claimAvailable && m_Daily_Login.GetValue())
+			{
+				m_Daily_Login.SetValue(false);
 			}
 		}
 	}
-	public function Unload(){
-		LoginRewardsDval.SignalChanged.Disconnect(HookClaim, this);
+
+	private function HookClaim(dv:DistributedValue)
+	{
+		if (!dv.GetValue()) return;
+		if(_global.DailyHook) return
+		if (!_global.GUI.DailyLogin.Skin){
+			setTimeout(Delegate.create(this, HookClaim), 100, dv);
+			return
+		}
+		var f = function()
+		{
+			if (!DailyPrevention.IsEvent(this.m_TrackNum))
+			{
+				if (DailyPrevention.NameMatch())
+				{
+					arguments.callee.base.apply(this, arguments);
+				}
+				else if (Key.isDown(Key.CONTROL))
+				{
+					arguments.callee.base.apply(this, arguments)
+				}
+				else
+				{
+					Chat.SignalShowFIFOMessage.Emit("DailyPrevention: Claiming blocked on this character, hold Ctrl to override", 0);
+				}
+			}
+			else
+			{
+				arguments.callee.base.apply(this, arguments)
+			}
+		}
+		f.base = _global.GUI.DailyLogin.Skin.prototype.ClaimReward;
+		_global.GUI.DailyLogin.Skin.prototype.ClaimReward = f;
+		_global.DailyHook = true;
+	}
+	public function Unload()
+	{
+		m_Daily_Login.SignalChanged.Disconnect(HookClaim, this);
+		Claim.SignalRewardsUpdated.Disconnect(AutoClaim, this);
 	}
 }

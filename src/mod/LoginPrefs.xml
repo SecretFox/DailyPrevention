@@ -2,5 +2,6 @@
 <Root>
 	<Value name="DailyPrevention" value="true" />
 	<Value name="DailyPrevention_Character" value="Starfox" />
+	<Value name="DailyPrevention_AutoClaim" value="false" />
 </Root>
 
